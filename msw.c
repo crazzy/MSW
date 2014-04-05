@@ -23,7 +23,7 @@ int main(int argc, char**argv) {
         int opt;
 
         /* Program vars */
-        int *tempchar;
+        int tempchar;
         int stdinstat;
         int status = 0;
         FILE *fh;
@@ -78,12 +78,11 @@ int main(int argc, char**argv) {
 
         /* Read until EOF from stdin, nuke file and exit with error code if too large. */
         while(1) {
-                stdinstat = scanf("%c", tempchar);
+                stdinstat = scanf("%c", &tempchar);
                 if(EOF == stdinstat) break;
 
                 stat(fname, &sb);
                 if(sb.st_size > maxfsize) {
-                        free(tempchar);
                         printf("File exceeded limit, emptying file and exiting.\n");
                         fclose(fh);
                         fh = fopen(fname, "w+");
@@ -91,8 +90,7 @@ int main(int argc, char**argv) {
                         break;
                 }
 
-                fprintf(fh, "%c", *tempchar);
-                free(tempchar);
+                fprintf(fh, "%c", tempchar);
         }
         free(fname);
         fclose(fh);
