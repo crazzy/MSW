@@ -10,6 +10,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <fcntl.h>
+#ifdef __GNUC__
+#include <getopt.h>
+#endif
 #define DEFMAXSIZE 5368709120
 #define _STDC_C99
 
@@ -23,10 +27,12 @@ int main(int argc, char**argv) {
         int opt;
 
         /* Program vars */
-        int tempchar;
-        int stdinstat;
+        char buf[4096];
+        size_t written;
+        size_t nread;
+        size_t nwrit;
         int status = 0;
-        FILE *fh;
+        int fh;
         struct stat sb;
 
         /* Parse arguments */
@@ -69,31 +75,36 @@ int main(int argc, char**argv) {
         }
 
         /* Open target file */
-        fh = fopen(fname, "w+");
-        if(fh == NULL) {
+        fh = open(fname, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG);
+        if(-1 == fh) {
                 perror("Cannot open file");
-                free(fname);
                 return 1;
         }
 
         /* Read until EOF from stdin, nuke file and exit with error code if too large. */
         while(1) {
-                stdinstat = scanf("%c", &tempchar);
-                if(EOF == stdinstat) break;
+                nread = read(STDIN_FILENO, buf, sizeof buf);
+                if(0 == nread) {
+                        break;
+                }
 
                 stat(fname, &sb);
                 if(sb.st_size > maxfsize) {
                         printf("File exceeded limit, emptying file and exiting.\n");
-                        fclose(fh);
-                        fh = fopen(fname, "w+");
+                        close(fh);
+                        fh = open(fname, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG);
                         status = 1;
                         break;
                 }
 
-                fprintf(fh, "%c", tempchar);
+                written = 0;
+                while(written < nread) {
+                        nwrit = write(fh, buf + written, nread - written);
+                        if (written < 1) break;
+                        written += nwrit;
+                }
         }
-        free(fname);
-        fclose(fh);
+        close(fh);
         return status;
 }
 
